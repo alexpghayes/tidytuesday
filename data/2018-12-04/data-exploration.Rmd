@@ -1,0 +1,129 @@
+---
+title: "Untitled"
+author: "Alex Hayes"
+date: "12/8/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(here)
+
+raw <- read_csv(here("data", "2018-12-04", "medium_datasci.csv"))
+```
+
+```{r}
+raw
+
+clean <- raw %>% 
+  select(-x1)
+
+glimpse(clean)
+```
+
+
+```{r}
+skimr::skim(clean)
+```
+
+```{r}
+clean %>% 
+  gather(topic, is_present, contains("tag")) %>% 
+  group_by(topic) %>% 
+  count(is_present) %>% 
+  filter(is_present == 1)%>% 
+  ggplot(aes(fct_reorder(topic, n), n)) +
+  geom_bar(stat = "identity") +
+  coord_flip()
+```
+
+```{r}
+clean
+```
+
+```{r}
+ggplot(clean, aes(reading_time)) +
+  geom_histogram() +
+  scale_x_log10()
+
+clean %>% 
+  filter(reading_time == 100) %>% 
+  pull(url) %>% 
+  clipr::write_clip()
+
+skimr::skim(clean)
+```
+
+
+```{r}
+gathered <- clean %>% 
+  gather(topic, is_present, contains("tag"))
+
+gathered %>% 
+  ggplot(aes(topic, reading_time)) +
+  geom_boxplot() +
+  scale_y_log10() +
+  coord_flip()
+```
+
+```{r}
+gathered %>% 
+  filter(title == "A.I. ?")
+
+num_categories <- clean %>% 
+  select(contains("tag")) %>% 
+  pmap_dbl(sum)
+
+ggplot(NULL, aes(num_categories)) +
+  geom_histogram()
+
+any(num_categories > 1)
+
+hist()
+```
+
+
+```{r}
+lm_df <- clean %>% 
+  mutate_at(vars(contains("tag")), as.factor) %>% 
+  select(reading_time, contains("tag"))
+
+fit <- lm(reading_time ~ ., data = lm_df)
+write_rds(fit, "fit.rds")
+broom::tidy(fit)
+
+library(ggfortify)
+
+autoplot(fit)
+```
+
+```{r}
+library(recipes)
+
+rec <- clean %>% 
+  recipe(reading_time ~ .) %>% 
+  step_YeoJohnson(reading_time) %>% 
+  prep(data = clean, retain = TRUE)
+
+sum(is.na(clean$reading_time))
+
+rec
+
+bc_df <- rec %>% 
+  juice()
+
+bc_df$reading_time
+
+bc_df <- clean %>% 
+  mutate_at(vars(reading_time), MASS::boxcox)
+
+MASS::boxcox(fit)
+
+  
+MASS::boxcox(clean$reading_time + 1)
+```
+
